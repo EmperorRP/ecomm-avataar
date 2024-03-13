@@ -1,46 +1,123 @@
 "use client"
-"use client"
 import React, { useState, useEffect, useRef } from 'react';
+import { FaArrowRight, FaArrowLeft } from "react-icons/fa";
+import Pagination from './PaginationComponent';
 
-interface CarouselDataItem {
-  id: string;
-  src: string;
-}
+
+const ITEM_DISTANCE = 200;
+const ITEM_ANGLE = -45;
+const CENTER_ITEM_POP = 500;
+const CENTER_ITEM_DISTANCE = 80;
+const AUTOPLAY_DELAY = 4500;
+
 
 const CarouselComponent: React.FC = () => {
-  const [carouselData, setCarouselData] = useState<CarouselDataItem[]>([
-    { id: '1', src: 'http://fakeimg.pl/350x150/?text=1' },
-    { id: '2', src: 'http://fakeimg.pl/350x150/?text=2' },
-    { id: '3', src: 'http://fakeimg.pl/350x150/?text=3' },
-    { id: '4', src: 'http://fakeimg.pl/350x150/?text=4' },
-    { id: '5', src: 'http://fakeimg.pl/350x150/?text=5' },
-  ]);
-  const carouselPlayState = useRef<number | null>(null);
+  const el = useRef<HTMLDivElement>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const autoplayRef = useRef<NodeJS.Timeout | null>(null);
 
-  const next = () => {
-    setCarouselData(carouselData => [...carouselData.slice(1), carouselData[0]]);
-  };
+  const items = [
+    {
+      title: "Utensils",
+      description: "Modern Kitchen Utensils",
+      image: "/img1.png",
+  },
+  {
+      title: "Abstract",
+      description: "Circular abstract",
+      image: "/img2.png",
+  },
+  {
+      title: "Sunflower pot",
+      description: "Beautiful Vase",
+      image: "/img3.png",
+  },
+  {
+      title: "Conical Abstract",
+      description: "Conical abstract art",
+      image: "/img4.png",
+  },
+  {
+      title: "Flower",
+      description: "Flower",
+      image: "/img5.png",
+  },
+];
+
+  function setTransform(el: HTMLDivElement, xpos: number, zpos: number, yAngle: number) {
+    el.style.transform = `translateX(${xpos}px) translateZ(${zpos}px) rotateY(${yAngle}deg)`;
+  }
 
   useEffect(() => {
-    carouselPlayState.current = window.setInterval(next, 4000);
+    target(currentIndex);
+  }, [currentIndex, items]);
+
+  useEffect(() => {
+    startAutoplay();
     return () => {
-      if (carouselPlayState.current !== null) {
-        clearInterval(carouselPlayState.current);
-      }
+      stopAutoplay();
     };
   }, []);
 
+  function target(index: number) {
+    const items = el.current!.children;
+    setCurrentIndex(index);
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i] as HTMLDivElement;
+
+      if (i === index) {
+        setTransform(item, 0, CENTER_ITEM_POP, 0);
+      } else if (i < index) {
+        setTransform(item, (i - index) * ITEM_DISTANCE - CENTER_ITEM_DISTANCE, 0, -ITEM_ANGLE);
+      } else {
+        setTransform(item, (i - index) * ITEM_DISTANCE + CENTER_ITEM_DISTANCE, 0, ITEM_ANGLE);
+      }
+    }
+  }
+
+  function startAutoplay() {
+    stopAutoplay();
+    autoplayRef.current = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % items.length);
+    }, AUTOPLAY_DELAY);
+  }
+
+  function stopAutoplay() {
+    if (autoplayRef.current) {
+      clearInterval(autoplayRef.current);
+      autoplayRef.current = null;
+    }
+  }
+
+  const handleArrowClick = (direction: 'left' | 'right') => {
+    stopAutoplay();
+    const newIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
+    const correctedIndex = (newIndex + items.length) % items.length;
+    target(correctedIndex);
+    startAutoplay();
+  };
+
   return (
-    <div className="carousel-container" style={{ display: 'flex', overflowX: 'auto' }}>
-      {carouselData.map((item, index) => (
-        <img 
-          key={item.id} 
-          src={item.src} 
-          alt={`Carousel item ${index + 1}`} 
-          style={{ flex: '0 0 auto', width: '350px', height: '150px', marginRight: '10px', objectFit: 'cover' }} 
-        />
-      ))}
+    <>
+      <div className="container my-4">
+      <div className='coverflow' ref={el}>
+        {items.map((item, index) => (
+          <div key={index} className='coverflow-item' onClick={() => target(index)}>
+            <img src={item.image} alt={item.title} className="drop-shadow-xl rounded-lg w-[500px] h-[350px] mx-auto" />
+            <div className="text-overlay rounded-lg">
+                <h2>{item.description}</h2>
+            </div>
+          </div>
+        ))}
+      </div>
+      
     </div>
+    <div className='arrow-container mb-5'>
+      <FaArrowLeft className="faArrowLeft" onClick={() => handleArrowClick('left')} />
+      <Pagination total={items.length} current={currentIndex} onClick={target} />
+      <FaArrowRight className="faArrowRight" onClick={() => handleArrowClick('right')} />
+    </div>
+    </>
   );
 };
 
